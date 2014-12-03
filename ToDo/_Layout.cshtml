@@ -1,0 +1,42 @@
+﻿@{
+    var username = "";
+    if (WebSecurity.IsAuthenticated)
+    {
+
+        Database db = Database.Open("ToDo");
+        var selectCommand = "SELECT Username FROM Users WHERE ID = @0";
+        dynamic data = db.QuerySingle(selectCommand, WebSecurity.CurrentUserId);
+        if (data != null)
+        {
+            username = data["Username"]; 
+        }
+    }                
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ToDo</title>
+    <link rel="icon" href="res/todo_icon.png" />
+    <link href="~/style.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <h1 class="title"><a href="@Href("~/Default")">ToDo</a></h1>
+            @if (WebSecurity.IsAuthenticated)
+            {
+            <div id="loginStatus">
+                <p>Welcome, @username!<br/><a href="@Href("~/Logout")">Log out</a></p>
+            </div>
+            }
+        </div>
+        <div id="main">
+            @RenderBody()
+        </div>
+    <div id="push"></div>
+    </div>
+    <div id="footer">
+        <p class="copy">&copy; @DateTime.Now.Year claudiag. Make your <span class="orangeText">ToDo</span> list in three steps defining project, milestones and tasks. That's all you need!</p>
+    </div>
+</body>
+</html>

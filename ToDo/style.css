@@ -1,0 +1,216 @@
+﻿* {
+margin: 0;
+}
+
+html, body {
+    height: 100%;
+    background: #FEFFFD;
+    font-family: "Segoe UI","Segoe UI Web","Segoe UI Web Regular","Helvetica Neue",Arial,sans-serif;
+    font-size: 14px;
+    color: #3D362D;
+}
+/* main containers */
+#container {
+    min-height: 100%;
+    height: auto !important;
+    height: 100%;
+    margin: 0 auto -3em;
+    max-width: 1600px;
+}
+
+#header {
+    height: 50px;
+    background-color: #3D362D;
+    color: #FEFFFD;
+    padding-left: 30px;
+}
+
+#main {
+    margin: 30px;
+}
+
+#footer{
+    background-color: #3D362D;
+    color: #FEFFFD;
+}
+#footer, #push {
+    height: 3em;
+}
+
+/* general elements*/
+p {
+    margin: 3px 0;
+}
+a {
+    color: #FF9900;
+    text-decoration:none;
+}
+
+a:hover {
+    color: #FF9900;
+    text-decoration:underline;
+}
+
+h1 {
+    padding: 7px 0 3px 0;
+}
+
+/* details */
+.title {
+}
+
+.orangeText {
+    color: #FF9900;
+}
+#loginStatus{
+    float: right;
+    margin: -45px 30px 0 0;
+    text-align: right;
+}
+.projRow {
+    margin: 0px 0 10px 30px;
+}
+.copy {
+    margin:0;
+    padding: 10px 0 0 30px;
+    font-size:small;
+}
+
+/* forms */
+.projForm, .mileForm, .taskForm, .addUserForm {
+    width: 800px;
+}
+.nameInput{
+    width: 230px;
+}
+.taskForm label {
+    float: left; 
+    width: 10em;
+}
+select {
+    width: 165px;
+}
+.formButtons {
+    margin-top: 10px;
+}
+
+/* buttons*/
+.button {
+	background-color:#3D362D;
+    color: #FEFFFD;
+	width:100px;
+    border: none;
+    cursor:pointer;
+}
+.button:hover {
+	background-color:#665847;
+}
+
+.submitBtn {
+    padding:8px 0;
+}
+.linkBtn{
+    display:inline-block;
+    text-align: center;
+    vertical-align: top;
+    padding: 6px 0 7px 0;
+}
+
+a.linkBtn:hover {
+    text-decoration:none;
+    color:#FEFFFD;
+}
+
+.nextBtn {
+    margin-left: 5px;
+}
+
+/*tables*/
+
+table.projectData { 
+    width:100%;
+    border-collapse:collapse;
+}
+
+table.projectData td { 
+  vertical-align: top; 
+  padding: 4px;
+}
+
+tr.rowMile td {
+    border-bottom:1px solid #FF9900;
+    padding-top: 20px;
+}
+
+.cellMileName {
+    font-size: 1.2em;
+    font-weight:bold;
+}
+
+.rowTask:hover {
+    background-color: rgba(102, 88, 71, 0.07);
+}
+
+.cellInfo {
+    color:rgba(102, 88, 71, 0.5);
+    font-size:0.8em;
+    text-transform:uppercase;
+    line-height: 19px;
+}
+
+.cellTask {
+    width:1%;
+    white-space:nowrap;
+    text-align:center;
+}
+.cellTaskDesc {
+    width:100%;
+}
+.cellTaskTime {
+    text-align:left;
+}
+.cellTotalTime {
+    text-align:left;
+}
+
+.cellEditDel {
+    font-size:0.8em;
+    text-transform:uppercase;
+    line-height: 19px;
+}
+
+.cellTask img {
+    vertical-align:middle;
+}
+
+table.projectData table.taskFormTable {
+    border-collapse:collapse;
+}
+table.projectData table.taskFormTable td{
+    vertical-align: middle;
+    padding: 0px;
+}
+
+/* login / register boxes*/
+.box {
+    float: left;
+    padding: 0 10px;
+    margin-top: 50px;
+    height: 180px;
+    position:relative;
+}
+#loginBox {
+    border-right: solid 1px #665847;
+    margin-left: 50px;
+}
+.box label {
+    float: left; 
+    width: 9em;    
+}
+.loginBtn, .registerBtn {
+    bottom: 0;
+    position: absolute;
+}
+.loginBtn{
+    right: 10px;
+}

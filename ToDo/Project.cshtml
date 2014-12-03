@@ -1,0 +1,408 @@
+﻿@{
+    
+    Layout = "~/_Layout.cshtml";
+
+    Database db = null;
+    
+    var selectCommand = "";
+    var projectId = -1;
+    var projectName = "";
+    var message = "";
+    var error = 0; // 0 = no error, 1 = resume, 2 = stop 
+    IEnumerable<dynamic> milestonesData = null;
+    IEnumerable<dynamic> usersDataProj = null;
+    IEnumerable<dynamic> usersDataAll = null;
+
+    string[] statuses = new string[]{"icon_new.png", "icon_wip.png", "icon_done.png", "icon_blck.png"};
+    string[] priorities = new string[] { "icon_p_lo.png", "icon_p_no.png", "icon_p_hi.png"};
+    
+    if (WebSecurity.IsAuthenticated)
+    {
+        if (!Request.QueryString["PID"].IsEmpty() && Request.QueryString["PID"].IsInt())
+        {
+            projectId = Request.QueryString["PID"].AsInt();
+            // check if current user is really the owner of PID from url; prevent "attacks"
+            selectCommand = "SELECT Projects.Name FROM Projects, ProjectUser WHERE Projects.PID=@0 and Projects.PID=ProjectUser.PID and ProjectUser.UID=@1";
+            db = Database.Open("ToDo");
+            var checkData = db.Query(selectCommand, projectId, WebSecurity.CurrentUserId);
+            db.Close();
+            if (checkData.Count() == 0){
+                message = "Invalid project, use the projects list to access it";
+                error = 2;
+            }else{
+                projectName = checkData.ElementAt(0)["Name"]; 
+            }
+        }else{
+            message = "Invalid project, use the projects list to access it";
+            error = 2;
+        }
+        // if valid pair (PID, UID) continue loading data
+        if (error == 0){
+
+            db = Database.Open("ToDo");
+            
+            // load users added to project
+            selectCommand = "SELECT Users.Id, Users.Username FROM Users, ProjectUser WHERE ProjectUser.PID = @0 AND Users.Id = ProjectUser.UID";
+            usersDataProj = db.Query(selectCommand, projectId);
+
+            // load all users
+            selectCommand = "SELECT Users.Id, Users.Username FROM Users";
+            usersDataAll = db.Query(selectCommand, WebSecurity.CurrentUserId);            
+            
+            // load milestones with convention: -1 means "null" 
+            selectCommand = "SELECT MID, Name FROM milestone WHERE PID = @0 and IsDeleted=0 union select null, 'Without Milestone'";
+            milestonesData = db.Query(selectCommand, projectId);
+            
+            db.Close();
+            
+            var mileName = "";
+
+            // add new milestone
+            if (!Request.QueryString["AddMile"].IsEmpty())
+            {
+                Validation.RequireField("mileName", "You must enter a name for milestone.");
+                
+                if (IsPost && Validation.IsValid())
+                {
+                    mileName = Request.Form["mileName"];
+                    var insertCommand = "INSERT INTO Milestone (Name, DateCreated, PID) VALUES(@0, getdate(), @1)";
+                    db = Database.Open("ToDo");
+                    db.Execute(insertCommand, mileName, projectId);
+                    db.Close();
+                    Response.Redirect("~/Project?PID="+projectId);
+                }
+
+            } // end add milestone
+            // edit milestone 
+            else if (!Request.QueryString["EditMile"].IsEmpty())
+            {
+                Validation.RequireField("mileName", "You must enter a name for milestone.");
+                
+                if (IsPost && Validation.IsValid())
+                {
+                    var mileId = -1;
+                    if (!Request.QueryString["EditMile"].IsEmpty() && Request.QueryString["EditMile"].IsInt())
+                    {
+                        mileId = Request.QueryString["EditMile"].AsInt();
+                    }
+
+                    mileName = Request.Form["mileName"];
+
+                    var updateCommand = "Update Milestone SET Name=@0 WHERE MID=@1 AND PID=@2";
+                    db = Database.Open("ToDo");
+                    db.Execute(updateCommand, mileName, mileId, projectId);
+                    db.Close();
+                    Response.Redirect("~/Project?PID=" + projectId);
+                }
+            } // end edit milestone
+            // delete milestone
+            else if (!Request.QueryString["DeleteMile"].IsEmpty())
+            {
+                var mileId = -1;
+                if (!Request.QueryString["DeleteMile"].IsEmpty() && Request.QueryString["DeleteMile"].IsInt())
+                {
+                    mileId = Request.QueryString["DeleteMile"].AsInt();
+                }
+                var updateCommand = "Update Milestone SET IsDeleted=1 WHERE MID=@0 AND PID=@1";
+                db = Database.Open("ToDo");
+                db.Execute(updateCommand, mileId, projectId);
+                db.Close();
+                Response.Redirect("~/Project?PID=" + projectId);
+            } // end delete mile             
+            // add new task
+            else if (!Request.QueryString["AddTask"].IsEmpty())
+                {
+                    Validation.RequireField("description", "You must enter description. This will be the task name.");
+
+                    if (IsPost && Validation.IsValid())
+                    {
+                        var description = Request.Form["description"];
+                        var remainingTime = Request.Form["remainingTime"].AsFloat();
+                        var mileId = Request.Form["milestone"].AsInt();
+                        var status = Request.Form["status"].AsInt();
+                        var priority = Request.Form["priority"].AsInt();
+
+                        var insertCommand = "INSERT INTO tasks (PID, MID, Description, DateCreated, DateUpdated, RemainingTime, Status, Priority) VALUES(@0, @1, @2, getdate(), getdate(), @3, @4, @5)";
+
+                        db = Database.Open("ToDo");
+                        if (mileId != -1)
+                        {
+                            db.Execute(insertCommand, projectId, mileId, description, remainingTime, status, priority);
+                        }
+                        else
+                        {
+                            db.Execute(insertCommand, projectId, null, description, remainingTime, status, priority);
+                        }
+                        db.Close();
+                        Response.Redirect("~/Project?PID=" + projectId);  
+                    }
+
+                }// end add task
+            // edit task
+            else if (!Request.QueryString["EditTask"].IsEmpty())
+            {
+                Validation.RequireField("description", "Task must have a description.");
+
+                var taskId = -1;
+                if (!Request.QueryString["EditTask"].IsEmpty() && Request.QueryString["EditTask"].IsInt())
+                {
+                    taskId = Request.QueryString["EditTask"].AsInt();
+                }                
+
+                if (IsPost && Validation.IsValid())
+                {
+                    var description = Request.Form["description"];
+                    var remainingTime = Request.Form["remainingTime"].AsFloat();
+                    var mileId = Request.Form["milestone"].AsInt();
+                    var status = Request.Form["status"].AsInt();
+                    var priority = Request.Form["priority"].AsInt();
+                    
+                    if ((ToDo.TaskStatus)(status) == ToDo.TaskStatus.Completed){
+                        remainingTime = 0;
+                    }
+
+                    var updateCommand = "UPDATE Tasks SET Description=@0, RemainingTime=@1, MID=@2, Status=@3, Priority=@4, DateUpdated=getdate() WHERE TID=@5";
+
+                    db = Database.Open("ToDo");
+                    if (mileId != -1)
+                    {
+                        db.Execute(updateCommand, description, remainingTime, mileId, status, priority, taskId);
+                    }
+                    else
+                    {
+                        db.Execute(updateCommand, description, remainingTime, null, status, priority, taskId);
+                    }
+                    db.Close();
+                    Response.Redirect("~/Project?PID=" + projectId);
+                }
+
+            }// end edit task  
+            // delete task
+            else if (!Request.QueryString["DeleteTask"].IsEmpty())
+            {
+                var taskId = -1;
+                if (!Request.QueryString["DeleteTask"].IsEmpty() && Request.QueryString["DeleteTask"].IsInt())
+                {
+                    taskId = Request.QueryString["DeleteTask"].AsInt();
+                }
+                var updateCommand = "Update Tasks SET IsDeleted=1 WHERE TID=@0";
+                db = Database.Open("ToDo");
+                db.Execute(updateCommand, taskId);
+                db.Close();
+                Response.Redirect("~/Project?PID=" + projectId);
+            } // end delete task
+            // quick update task
+            else if (!Request.QueryString["UpdateTask"].IsEmpty())
+            {
+                var taskId = -1;
+                if (Request.QueryString["UpdateTask"].IsInt())
+                {
+                    taskId = Request.QueryString["UpdateTask"].AsInt();
+                }
+                var updateCommand = "UPDATE Tasks SET Status=@0 WHERE TID=@1";
+                
+                db = Database.Open("ToDo");
+                db.Execute(updateCommand, ToDo.TaskStatus.Completed, taskId);
+                db.Close();
+                Response.Redirect("~/Project?PID=" + projectId);
+            } // end update task                
+            // add user
+            else if (!Request.QueryString["AddUser"].IsEmpty())
+            {
+                if (IsPost)
+                {
+                    var userId = Request.Form["users"].AsInt();
+                    if (userId != -1 && userId != WebSecurity.CurrentUserId){
+                        var insertCommand = "IF NOT EXISTS (SELECT * FROM ProjectUser WHERE PID=@0 and UID=@1) " +
+                                                " INSERT INTO ProjectUser(PID, UID) VALUES (@0, @1)";
+                        db = Database.Open("ToDo");
+                        db.Execute(insertCommand, projectId, userId);
+                        db.Close();                   
+                    }
+                    Response.Redirect("~/Project?PID=" + projectId);
+                }
+
+            } // end add user   
+        }       
+    }// end authenticated 
+}
+
+<span></span>
+
+@if (WebSecurity.IsAuthenticated && error != 2)
+{
+    
+    // Add Milestone, Add Task buttons
+    if (Request.QueryString["AddMile"].IsEmpty() && 
+        (Request.QueryString["AddTask"].IsEmpty())) 
+    { 
+        <p>
+            <a href="@Href("~/Project?pid="+projectId+"&AddMile=0")" class="button linkBtn" title="useful for grouping tasks by deadline or phase or interest">New Milestone</a>
+            <a href="@Href("~/Project?pid="+projectId+"&AddTask=0")" class="button linkBtn nextBtn" title="create new task">New Task</a>
+            <a href="@Href("~/Default")" class="button linkBtn nextBtn" title="all your projects">Projects List</a>
+        </p>     
+    }
+    else if (!Request.QueryString["AddMile"].IsEmpty())// Add Milestone 
+    {        
+        @Helpers.ManageMilestone("add", projectId, null, db)       
+    }
+    else if (!Request.QueryString["AddTask"].IsEmpty() && Request.QueryString["MileId"].IsEmpty())// Add Task
+    {
+        @Helpers.ManageTask("add", projectId, milestonesData, -1, null, db)
+    }   
+
+    <h1>@projectName</h1>
+    <p><span class="cellInfo">Users: </span>
+    @foreach (var user in usersDataProj)
+    {
+        <span>@user["Username"], </span>
+    }
+    <span class="cellEditDel"><a href="@Href("~/Project?pid="+projectId+"&AddUser=0")">Add user</a></span>
+    </p>    
+    if (!Request.QueryString["AddUser"].IsEmpty())// Add User
+    {
+        <form method="post" class="addUserForm">
+            <fieldset>
+                <legend> Add User </legend>
+                @Html.ValidationSummary()
+                <p>
+                    <label for="users">Users:</label>
+                    <select name="users">
+                        <option value="-1">-</option>
+                        @foreach (var user in usersDataAll)
+                        {
+                            <option value="@user["Id"]">@user["Username"]</option>
+                        }
+                    </select>
+                </p>
+                <div class="formButtons">
+                    <input type="submit" name="addUser" value="Save" class="button submitBtn" />
+                    <a href="@Href("~/Project?pid="+projectId)" class="button linkBtn nextBtn">Cancel</a>
+                </div>                
+            </fieldset>
+        </form> 
+    }   
+    
+    <table class="projectData">
+    @foreach (var mile in milestonesData)
+    {// display milestones one by one
+
+        //get task for current milestone
+        bool withMilestone = (mile["MID"] != null);
+        IEnumerable<dynamic> tasksData;
+        db = Database.Open("ToDo");
+        var selectTasks = "SELECT * FROM tasks WHERE PID = @0 ";
+        var mid = -1;
+        if (withMilestone)
+        {
+            selectTasks += "AND MID = @1 AND IsDeleted=0 order by Priority desc";
+            mid = mile["MID"];
+        }
+        else
+        {
+            selectTasks += "AND MID is NULL AND IsDeleted=0 order by Priority desc";
+            mid = -1;
+        }
+        tasksData = db.Query(selectTasks, projectId, mile["MID"]);
+        db.Close();        
+        
+            <tr class="rowMile">
+                <td colspan="5">
+                
+                    @if (withMilestone)
+                    {
+                        <span class="cellMileName">@mile["Name"]</span>
+                        <span class="cellEditDel"><a href="@Href("~/Project?pid=" + projectId + "&EditMile=" + mid)">Edit</a></span>
+                        <span class="cellEditDel"><a href="@Href("~/Project?pid=" + projectId + "&DeleteMile=" + mid)" onclick="return confirm('Are you sure you want to delete this milestone?')">Delete</a></span>
+                        <span class="cellEditDel"><a href="@Href("~/Project?pid=" + projectId + "&AddTask=0&MileId=" + mid)">New Task</a></span>
+                    }
+                    else if (!withMilestone && tasksData.Count() > 0)
+                    {
+                        <span class="cellMileName">@mile["Name"]</span>
+                        <span class="cellEditDel"><a href="@Href("~/Project?pid=" + projectId + "&AddTask=0&MileId=" + mid)">New Task</a></span>
+                    }
+
+                    @if (!Request.QueryString["EditMile"].IsEmpty() && Request.QueryString["EditMile"].AsInt() == mid)
+                    {// Edit Milestone 
+                        @Helpers.ManageMilestone("edit", projectId, mile, db)          
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td colspan="5">
+                    @if (!Request.QueryString["AddTask"].IsEmpty() && Request.QueryString["MileId"].AsInt() == mid)
+                    {// Add Task
+                        @Helpers.ManageTask("add", projectId, milestonesData, mid, null, db)
+                    }
+                </td>
+            </tr>    
+        
+        // display tasks for current milestone
+            
+        if (tasksData.Count() > 0){
+            <tr class="cellInfo">
+                <td class="cellTask">Status</td>
+                <td class="cellTaskDesc">Description</td>
+                <td class="cellTask">Priority</td>
+                <td class="cellTask">Hours</td>                    
+                <td class="cellTask"></td>
+            </tr>
+        }
+        else if (tasksData.Count() == 0 && withMilestone)
+        {
+            <tr class="cellInfo">
+                <td colspan="5">No tasks</td>
+            </tr>
+        } 
+        float tmpTotal = 0;
+        foreach (var task in tasksData)
+        {
+            <tr class="rowTask">
+                <td class="cellTask"><img src="@Href("~/res/"+statuses[task["Status"]])" /></td>
+                    @{var desc = task["Description"].Replace("\r\n", "<br />");}
+                <td class="cellTaskDesc">@Html.Raw(desc)</td>
+                    @{float hours = task.RemainingTime;
+                        tmpTotal += hours;
+                        }
+                <td class="cellTask"><img src="@Href("~/res/"+priorities[task["Priority"]])" /></td>
+                <td class="cellTask cellTaskTime">@hours.ToString("0.#")</td>                    
+                <td class="cellTask cellEditDel">
+                    <a href="@Href("~/Project?pid="+projectId+"&EditTask="+task["TID"])">Edit</a>
+                    <a href="@Href("~/Project?pid="+projectId+"&DeleteTask="+task["TID"])" onclick="return confirm('Are you sure you want to delete this task?')">Delete</a>
+                    <a href="@Href("~/Project?pid="+projectId+"&UpdateTask="+task["TID"])">Done</a>
+                </td>
+            </tr>
+            if (!Request.QueryString["EditTask"].IsEmpty() && Request.QueryString["EditTask"].AsInt() == task["TID"])
+            {// Edit Task
+            <tr>
+                <td colspan="5">
+                    @Helpers.ManageTask("edit", projectId, milestonesData, mid, task, db)
+                </td>
+            </tr>
+            } 
+        }
+        if (tasksData.Count() > 0)
+        {
+            <tr> 
+                <td colspan="3" class="cellInfo" style="text-align:right;">Total</td>
+                <td class="cellTask cellTotalTime">@tmpTotal.ToString("0.#")</td>
+                <td></td>
+            </tr> 
+        }           
+
+    }
+    </table> 
+}// end authenticated 
+else
+{ 
+    if (error == 2){
+        <p>
+            @message: <a href="@Href("~/Default")" title="see your projects">Projects list</a>
+        </p>
+           
+    } else{
+         <p>
+            You have to be <a href="Default?returnUrl=@Request.Url.PathAndQuery">log in</a> to acces this page.
+        </p>     
+    }  
+}

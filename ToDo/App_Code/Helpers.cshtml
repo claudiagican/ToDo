@@ -1,0 +1,96 @@
+﻿@using ToDo;    
+
+
+@helper ManageTask(string action, int projectId, IEnumerable<dynamic> milestonesData, int currMilestone, dynamic task, Database db)
+{ // action: add, edit
+
+    <form method="post" class="taskForm">
+    <fieldset>
+        <legend>@(action == "add" ? "Add a new task" : "Edit task")</legend>
+        @Html.ValidationSummary()
+        <table class="taskFormTable">
+            <colgroup>
+                <col style="width:60%">
+                <col >
+            </colgroup>
+            <tr>
+                <td>
+                    @if (action == "add"){
+                        <textarea name="description" placeholder="task description here" rows="5" style="width:95%">@Request.Form["description"]</textarea>
+                    }else{                                    
+                        <textarea name="description" placeholder="task description here" rows="5" style="width:95%">@task["description"]</textarea>
+                    }
+                </td>
+                <td>
+                    <p>
+                        <label for="remainingTime">Hours to complete:</label>
+                        <input type="text" name="remainingTime" value="@(action == "add"? Request.Form["remainingTime"] : task["remainingTime"])" placeholder="0.0"/>
+                    </p>
+                    <p>
+                        <label for="milestone">Milestone:</label>
+                        <select name="milestone">
+                            <option value="-1">-</option>
+                            @foreach (var mile in milestonesData)
+                            {
+                                if (mile["MID"] != null) { // ignore from collection the "Without Milestone" entry
+                                    <option value="@mile["MID"]" @((mile["MID"] == currMilestone) ? "selected" : "") >
+                                        @mile["Name"]
+                                    </option>
+                                }
+                            }
+                        </select>
+                    </p>
+                    <p>
+                        <label for="status">Status:</label>
+                        <select name="status">
+                            <option value="@((int)(TaskStatus.New))" @(action == "edit" && task["status"] == ((int)(TaskStatus.New)) ? "selected" : "")>New</option>
+                            <option value="@((int)(TaskStatus.WiP))" @(action == "edit" && task["status"] == ((int)(TaskStatus.WiP)) ? "selected" : "")>Work in Progress</option>
+                            <option value="@((int)(TaskStatus.Blocked))" @(action == "edit" && task["status"] == ((int)(TaskStatus.Blocked)) ? "selected" : "")>Blocked</option>
+                            <option value="@((int)(TaskStatus.Completed))" @(action == "edit" && task["status"] == ((int)(TaskStatus.Completed)) ? "selected" : "")>Completed</option>
+                        </select>
+                    </p>
+                    <p>
+                        <label for="priority">Priority:</label>
+                        <select name="priority">
+                            <option value="@((int)(TaskPriority.Low))" @(action == "edit" && task["priority"] == ((int)(TaskPriority.Low)) ? "selected" : "")>Low</option>
+                            <option value="@((int)(TaskPriority.Normal))" @(action == "add" ? "selected" : "") @(action == "edit" && task["priority"] == ((int)(TaskPriority.Normal)) ? "selected" : "")>Normal</option>
+                            <option value="@((int)(TaskPriority.High))" @(action == "edit" && task["priority"] == ((int)(TaskPriority.High)) ? "selected" : "")>High</option>
+                        </select>
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <div class="formButtons">
+            @if (action == "add"){
+                <input type="submit" name="addTask" value="Add" class="button submitBtn" />
+            }else{                                    
+                <input type="submit" name="editTask" value="Save" class="button submitBtn" />
+            }            
+            <a href="@Href("~/Project?pid="+projectId)" class="button linkBtn nextBtn">Cancel</a>
+        </div>
+    </fieldset>
+</form>
+    
+}
+
+@helper ManageMilestone(string action, int projectId, dynamic mile, Database db)
+{ // action: add, edit
+    <form method="post" class="mileForm">
+        <fieldset>
+            <legend>@(action == "add" ? "Add a new Milestone" : "Edit Milestone")</legend>
+            @Html.ValidationSummary()
+            <span>
+                <label for="mileName">Name:</label>
+                <input type="text" name="mileName" class="nameInput" value="@(action == "add"? Request.Form["mileName"] : mile["Name"])" />
+            </span> 
+            <div class="formButtons">
+                @if (action == "add"){
+                    <input type="submit" name="addMile" value="Add" class="button submitBtn" />
+                }else{                                    
+                    <input type="submit" name="editMile" value="Save" class="button submitBtn" />
+                }   
+                <a href="@Href("~/Project?pid="+projectId)" class="button linkBtn nextBtn">Cancel</a>
+            </div>                
+        </fieldset>
+    </form>  
+}
