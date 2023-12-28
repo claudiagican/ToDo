@@ -1,4 +1,4 @@
-C# tool for managing projects
+Tool for managing projects made in ASP.NET with SQL Server
 
 Project preview: 
 
